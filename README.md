@@ -10,8 +10,9 @@
 | **Part 2** | Safety Guardrails | 20 |
 | **Part 3** | CopilotKit Frontend (GIVEN) | — |
 | **Part 4** | LangSmith Tracing + Evaluation | 20 |
+| **Part 5** | Three-Layer Evaluation Framework | 50 |
 | **Bonus** | Advanced Features | +25 |
-| **Total** | | **75 + 25 bonus** |
+| **Total** | | **125 + 25 bonus** |
 
 ## What You'll Build
 
@@ -20,6 +21,7 @@ A production-grade Financial Approval System that demonstrates:
 - **CopilotKit** frontend for real-time interaction with the approval agent
 - **Safety guardrails** for input validation and PII filtering
 - **LangSmith** integration for tracing and evaluation
+- **RAGAS** framework for industry-standard agent evaluation
 
 ## Architecture
 
@@ -228,9 +230,12 @@ assignment-5/
 │   │   └── output_filter.py        # ★ PII filtering (TODO)
 │   │
 │   └── evaluation/
-│       ├── dataset.py               # 10 eval test cases (GIVEN)
+│       ├── dataset.py               # 12 eval test cases (GIVEN)
 │       ├── evaluators.py            # ★ LangSmith evaluators (TODO)
-│       └── run_eval.py              # Evaluation runner (GIVEN)
+│       ├── run_eval.py              # Evaluation runner (GIVEN)
+│       ├── three_layer_evaluators.py # ★ RAGAS 3-layer evaluators (TODO)
+│       ├── dataset_generator.py     # ★ LLM dataset generation (TODO)
+│       └── run_three_layer_eval.py  # Three-layer eval runner (GIVEN)
 │
 ├── frontend/
 │   └── src/
@@ -249,7 +254,7 @@ assignment-5/
 └── tests/                           # Test harnesses (GIVEN)
 ```
 
-**★ = Files you need to implement** (5 files total)
+**★ = Files you need to implement** (8 files total)
 
 ## Part 1: LangGraph Workflow + Interrupts (35 points)
 
@@ -382,6 +387,54 @@ The frontend needs the backend running (`python -m backend.server`) to function.
 python -m backend.evaluation.run_eval
 ```
 
+## Part 5: Three-Layer Evaluation Framework (50 points)
+
+### Files to Implement
+- `backend/evaluation/three_layer_evaluators.py` — 10 evaluator factories (34 points)
+- `backend/evaluation/dataset_generator.py` — LLM dataset generation + LangSmith upload (16 points)
+
+### Layer 1 — Business Metrics (10 points)
+Heuristic evaluators that compare workflow outputs to expected results:
+
+| Evaluator | Points | Logic |
+|-----------|--------|-------|
+| `create_approval_path_evaluator` | 3 | Compare approval path stages. Exact match → 1.0, same length → 0.5, else 0.0 |
+| `create_false_positive_evaluator` | 2 | Detect approved-when-should-reject → 0.0 |
+| `create_false_negative_evaluator` | 2 | Detect rejected-when-should-approve → 0.0 |
+| `create_human_review_efficiency_evaluator` | 3 | Compare human review count. Exact → 1.0, off-by-1 → 0.5, else 0.0 |
+
+### Layer 2 — Agent Performance (12 points)
+RAGAS framework metrics for industry-standard agent evaluation:
+
+| Evaluator | Points | RAGAS Metric |
+|-----------|--------|--------------|
+| `create_tool_call_accuracy_evaluator` | 5 | `ToolCallAccuracy` — validates correct workflow stages invoked in correct order |
+| `create_agent_goal_accuracy_evaluator` | 4 | `AgentGoalAccuracyWithReference` — did agent reach correct final status? |
+| `create_topic_adherence_evaluator` | 3 | `TopicAdherence` — agent stays within financial approval domain |
+
+### Layer 3 — Safety & Compliance (12 points)
+Mixed RAGAS + heuristic evaluators for safety:
+
+| Evaluator | Points | Logic |
+|-----------|--------|-------|
+| `create_policy_adherence_evaluator` | 4 | Heuristic: over-ceiling must reject, required reviews per risk level |
+| `create_hallucination_evaluator` | 4 | RAGAS `Faithfulness` or LLM judge: no fabricated details |
+| `create_audit_trail_evaluator` | 4 | Heuristic: decisions non-empty, correct keys, correct count |
+
+### Dataset Generator (16 points)
+
+| Function | Points | Description |
+|----------|--------|-------------|
+| `generate_eval_dataset` | 4 | Use LLM to generate diverse test cases |
+| `generate_edge_cases` | 4 | Generate boundary/adversarial scenarios |
+| `upload_to_langsmith` | 4 | Upload dataset to LangSmith via `client.create_dataset()` |
+| `validate_generated_dataset` | 4 | Validate schema, types, value ranges |
+
+### Running Three-Layer Evaluation
+```bash
+python -m backend.evaluation.run_three_layer_eval
+```
+
 ## Bonus Features (+25 points)
 
 1. **Parallel Approval Routing** (+8 points): For high-risk requests, run manager and finance reviews simultaneously
@@ -400,6 +453,7 @@ python -m pytest tests/test_graph.py -v      # Part 1
 python -m pytest tests/test_guardrails.py -v  # Part 2
 python -m pytest tests/test_frontend.py -v    # Part 3
 python -m pytest tests/test_evaluation.py -v  # Part 4
+python -m pytest tests/test_three_layer_evaluation.py -v  # Part 5
 ```
 
 ## Useful Commands
@@ -418,6 +472,7 @@ cd frontend && npm run dev
 
 # Run evaluation
 python -m backend.evaluation.run_eval
+python -m backend.evaluation.run_three_layer_eval
 ```
 
 ## Resources
@@ -427,6 +482,8 @@ python -m backend.evaluation.run_eval
 - [CopilotKit Documentation](https://docs.copilotkit.ai/)
 - [CopilotKit useLangGraphInterrupt](https://docs.copilotkit.ai/reference/hooks/useLangGraphInterrupt)
 - [LangSmith Evaluation](https://docs.smith.langchain.com/evaluation)
+- [RAGAS Agent Evaluation](https://docs.ragas.io/en/latest/concepts/metrics/available_metrics/agents/)
+- [RAGAS LangGraph Integration](https://docs.ragas.io/en/latest/howtos/integrations/langgraph/)
 
 ## Submission
 
