@@ -21,6 +21,20 @@ from backend.agent.state import ApprovalState
 from backend.config import DEPARTMENT_BUDGETS, MEDIUM_RISK_THRESHOLD, HIGH_RISK_THRESHOLD
 
 
+def _parse_decision(raw_decision) -> tuple[bool, str]:
+    """Parse an interrupt decision, handling both str and dict inputs."""
+    if isinstance(raw_decision, str):
+        raw_decision = json.loads(raw_decision)
+    return raw_decision.get("approved", False), raw_decision.get("comments", "")
+
+
+def _decision_message(role: str, approved: bool, comments: str) -> AIMessage:
+    """Build a standard decision AIMessage."""
+    status = "approved" if approved else "rejected"
+    comment_suffix = f" Comments: {comments}" if comments else ""
+    return AIMessage(content=f"{role} {status} the request.{comment_suffix}")
+
+
 # ============================================================
 # NODE FUNCTIONS
 # ============================================================
@@ -85,7 +99,7 @@ def demo_validate_budget(state: ApprovalState) -> dict:
 
 def demo_manager_review(state: ApprovalState) -> dict:
     """Manager HITL interrupt."""
-    decision_raw = interrupt({
+    raw = interrupt({
         "type": "manager_review",
         "request_id": state.get("request_id", "DEMO-001"),
         "title": state.get("title", ""),
@@ -94,24 +108,18 @@ def demo_manager_review(state: ApprovalState) -> dict:
         "risk_level": state.get("risk_level", "medium"),
         "risk_reasoning": state.get("risk_reasoning", ""),
     })
-    if isinstance(decision_raw, str):
-        decision = json.loads(decision_raw)
-    else:
-        decision = decision_raw
-
-    approved = decision.get("approved", False)
-    comments = decision.get("comments", "")
+    approved, comments = _parse_decision(raw)
     return {
         "manager_approved": approved,
         "manager_comments": comments,
         "decisions": [{"stage": "manager_review", "approved": approved, "reviewer": "Manager (demo)", "comments": comments}],
-        "messages": [AIMessage(content=f"Manager {'approved' if approved else 'rejected'} the request.{f' Comments: {comments}' if comments else ''}")],
+        "messages": [_decision_message("Manager", approved, comments)],
     }
 
 
 def demo_finance_review(state: ApprovalState) -> dict:
     """Finance HITL interrupt."""
-    decision_raw = interrupt({
+    raw = interrupt({
         "type": "finance_review",
         "request_id": state.get("request_id", "DEMO-001"),
         "title": state.get("title", ""),
@@ -123,24 +131,18 @@ def demo_finance_review(state: ApprovalState) -> dict:
         "budget_remaining": state.get("budget_remaining", 0),
         "manager_comments": state.get("manager_comments", ""),
     })
-    if isinstance(decision_raw, str):
-        decision = json.loads(decision_raw)
-    else:
-        decision = decision_raw
-
-    approved = decision.get("approved", False)
-    comments = decision.get("comments", "")
+    approved, comments = _parse_decision(raw)
     return {
         "finance_approved": approved,
         "finance_comments": comments,
         "decisions": [{"stage": "finance_review", "approved": approved, "reviewer": "Finance (demo)", "comments": comments}],
-        "messages": [AIMessage(content=f"Finance {'approved' if approved else 'rejected'} the request.{f' Comments: {comments}' if comments else ''}")],
+        "messages": [_decision_message("Finance", approved, comments)],
     }
 
 
 def demo_final_signoff(state: ApprovalState) -> dict:
     """Executive HITL interrupt (critical risk only)."""
-    decision_raw = interrupt({
+    raw = interrupt({
         "type": "final_signoff",
         "request_id": state.get("request_id", "DEMO-001"),
         "title": state.get("title", ""),
@@ -152,18 +154,12 @@ def demo_final_signoff(state: ApprovalState) -> dict:
         "within_budget": state.get("within_budget", True),
         "decisions": state.get("decisions", []),
     })
-    if isinstance(decision_raw, str):
-        decision = json.loads(decision_raw)
-    else:
-        decision = decision_raw
-
-    approved = decision.get("approved", False)
-    comments = decision.get("comments", "")
+    approved, comments = _parse_decision(raw)
     return {
         "final_approved": approved,
         "final_comments": comments,
         "decisions": [{"stage": "final_signoff", "approved": approved, "reviewer": "Executive (demo)", "comments": comments}],
-        "messages": [AIMessage(content=f"Executive {'approved' if approved else 'rejected'} the request.{f' Comments: {comments}' if comments else ''}")],
+        "messages": [_decision_message("Executive", approved, comments)],
     }
 
 

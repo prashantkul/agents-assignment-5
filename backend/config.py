@@ -39,11 +39,7 @@ CHECKPOINT_DB = os.getenv("CHECKPOINT_DB", "checkpoints.db")
 
 
 def get_llm(temperature: float = 0.0):
-    """
-    Factory function to create the appropriate LLM based on configuration.
-
-    Returns a LangChain-compatible chat model.
-    """
+    """Factory function to create the appropriate LLM based on LLM_PROVIDER."""
     if LLM_PROVIDER == "google":
         from langchain_google_genai import ChatGoogleGenerativeAI
         return ChatGoogleGenerativeAI(
@@ -51,10 +47,10 @@ def get_llm(temperature: float = 0.0):
             google_api_key=GOOGLE_API_KEY,
             temperature=temperature,
         )
-    else:
-        from langchain_openai import ChatOpenAI
-        return ChatOpenAI(
-            model=OPENAI_MODEL,
-            api_key=OPENAI_API_KEY,
-            temperature=temperature,
-        )
+
+    from langchain_openai import ChatOpenAI
+    return ChatOpenAI(
+        model=OPENAI_MODEL,
+        api_key=OPENAI_API_KEY,
+        temperature=temperature,
+    )

@@ -5,8 +5,7 @@ The ApprovalState extends LangGraph's MessagesState to include
 all fields needed for the multi-stage approval process.
 """
 
-from typing import Annotated, Optional
-from typing_extensions import TypedDict
+from typing import Optional
 from langgraph.graph import MessagesState
 
 

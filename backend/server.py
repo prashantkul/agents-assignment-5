@@ -28,7 +28,7 @@ try:
     from backend.agent.graph import create_approval_graph
     graph = create_approval_graph(checkpointer=checkpointer)
     print("[server] Loaded student approval graph")
-except (NotImplementedError, Exception) as exc:
+except Exception as exc:
     from backend.agent.demo_graph import create_demo_graph
     graph = create_demo_graph(checkpointer=checkpointer)
     print(f"[server] Student graph not ready ({type(exc).__name__}), using demo graph")

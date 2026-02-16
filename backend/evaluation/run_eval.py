@@ -40,6 +40,11 @@ def run_evaluation():
     risk_scores = []
     consistency_scores = []
 
+    evaluators = [
+        ("Risk", risk_evaluator, lambda exp: {"risk_level": exp["risk_level"]}, risk_scores),
+        ("Consistency", consistency_evaluator, lambda exp: {"status": exp["status"]}, consistency_scores),
+    ]
+
     for i, test_case in enumerate(EVAL_DATASET):
         inputs = test_case["input"]
         expected = test_case["expected"]
@@ -50,34 +55,19 @@ def run_evaluation():
         print(f"  Expected risk: {expected['risk_level']}")
         print(f"  Expected status: {expected['status']}")
 
-        # In a full implementation, this would run the graph
-        # For now, just validate the evaluator structure
-        try:
-            # Test evaluator with mock outputs matching expected
-            risk_result = risk_evaluator(
-                inputs=inputs,
-                outputs={"risk_level": expected["risk_level"]},
-                reference_outputs=expected,
-            )
-            risk_scores.append(risk_result.get("score", 0))
-            print(f"  Risk evaluator score: {risk_result.get('score', 'N/A')}")
-        except NotImplementedError:
-            print("  Risk evaluator: NOT IMPLEMENTED")
-        except Exception as e:
-            print(f"  Risk evaluator error: {e}")
-
-        try:
-            consistency_result = consistency_evaluator(
-                inputs=inputs,
-                outputs={"status": expected["status"]},
-                reference_outputs=expected,
-            )
-            consistency_scores.append(consistency_result.get("score", 0))
-            print(f"  Consistency evaluator score: {consistency_result.get('score', 'N/A')}")
-        except NotImplementedError:
-            print("  Consistency evaluator: NOT IMPLEMENTED")
-        except Exception as e:
-            print(f"  Consistency evaluator error: {e}")
+        for name, evaluator, make_outputs, scores in evaluators:
+            try:
+                result = evaluator(
+                    inputs=inputs,
+                    outputs=make_outputs(expected),
+                    reference_outputs=expected,
+                )
+                scores.append(result.get("score", 0))
+                print(f"  {name} evaluator score: {result.get('score', 'N/A')}")
+            except NotImplementedError:
+                print(f"  {name} evaluator: NOT IMPLEMENTED")
+            except Exception as e:
+                print(f"  {name} evaluator error: {e}")
 
     print("\n" + "=" * 60)
     if risk_scores:
